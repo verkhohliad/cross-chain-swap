@@ -1,6 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
-#[ink::contract(env = ink::env::DefaultEnvironment)]
+#[ink::contract]
 pub mod htlc_escrow {
     use ink::env::call::{build_call, ExecutionInput, Selector};
     use ink::env::hash::Keccak256;
@@ -121,7 +121,7 @@ pub mod htlc_escrow {
             let initiator = Self::env().caller();
             let total = Self::env().transferred_value();
             assert!(resolver_deposit > U256::from(0), "resolver_deposit required");
-            assert!(total > resolver_deposit, "insufficient value for lock");
+            assert!(total >= resolver_deposit, "insufficient value for lock");
             let locked_amount = total
                 .checked_sub(resolver_deposit)
                 .expect("underflow on locked_amount");

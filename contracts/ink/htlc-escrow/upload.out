@@ -1,0 +1,42 @@
+ Dry-running new_native (skip with --skip-dry-run)
+    Success! Gas required estimated at Weight(ref_time: 395041357, proof_size: 10673)
+      Events
+       Event Balances ➜ Withdraw
+         who: 5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY
+         amount: 2.309709817mUNIT
+       Event System ➜ NewAccount
+         account: 5H4mKuwJeZd6jAYfjFRDj2A51wf9rmDknkiuUfAFuVdFc1EC
+       Event Balances ➜ Endowed
+         account: 5H4mKuwJeZd6jAYfjFRDj2A51wf9rmDknkiuUfAFuVdFc1EC
+         free_balance: 1mUNIT
+       Event Balances ➜ Transfer
+         from: 5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY
+         to: 5H4mKuwJeZd6jAYfjFRDj2A51wf9rmDknkiuUfAFuVdFc1EC
+         amount: 1mUNIT
+       Event Balances ➜ Transfer
+         from: 5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY
+         to: 5H4mKuwJeZd6jAYfjFRDj2A51wf9rmDknkiuUfAFuVdFc1EC
+         amount: 6UNIT
+       Event Revive ➜ Instantiated
+         deployer: 0x9621dde636de098b43efb0fa9b61facfe328f99d
+         contract: 0xdd38d8f1eecec8f6513c58c6848c3ca6a54bbf33
+       Event Balances ➜ TransferAndHold
+         reason: Revive(StorageDepositReserve)
+         source: 5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY
+         dest: 5H4mKuwJeZd6jAYfjFRDj2A51wf9rmDknkiuUfAFuVdFc1EC
+         transferred: 100.625mUNIT
+       Event Balances ➜ TransferAndHold
+         reason: Revive(StorageDepositReserve)
+         source: 5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY
+         dest: 5H4mKuwJeZd6jAYfjFRDj2A51wf9rmDknkiuUfAFuVdFc1EC
+         transferred: 100.935mUNIT
+       Event Balances ➜ BurnedDebt
+         amount: 2.309709817mUNIT
+       Event TransactionPayment ➜ TransactionFeePaid
+         who: 5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY
+         actual_fee: 2.309709817mUNIT
+         tip: 0UNIT
+       Event System ➜ ExtrinsicSuccess
+         dispatch_info: DispatchEventInfo { weight: Weight { ref_time: 2309925899, proof_size: 24547 }, class: Normal, pays_fee: Yes }
+
+    Contract 0xdd38d8f1eecec8f6513c58c6848c3ca6a54bbf33

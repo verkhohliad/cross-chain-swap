@@ -100,7 +100,7 @@ clean-artifacts:
 .PHONY: upload-escrow
 upload-escrow:
 	@echo "Uploading HTLC Escrow code to $(NODE_URL) ..."
-	cd $(ESCROW_DIR) && cargo contract upload --url $(NODE_URL) --suri "$(SURI)" --execute --skip-confirm | tee upload.out
+	cd $(ESCROW_DIR) && cargo contract instantiate --args 0x1111111111111111111111111111111111111111 0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f 1000 1000000000000 --constructor new_native --value 6000000000000 --suri //Alice -x --skip-confirm | tee upload.out
 	@# Try to extract code hash from the output (fallback to grep first 0x...32 bytes)
 	@cd $(ESCROW_DIR) && cat upload.out | grep -Eo '0x[0-9a-fA-F]{64}' | tail -n 1 > ../../$(ESCROW_CODE_HASH_FILE)
 	@echo "Saved escrow code hash to $(ESCROW_CODE_HASH_FILE): $$(cat $(ESCROW_CODE_HASH_FILE))"
