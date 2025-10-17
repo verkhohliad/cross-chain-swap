@@ -89,19 +89,19 @@ pub mod htlc_escrow {
         psp22_token: Address, // zero if native
     }
 
-    #[ink(event)]
+    #[ink(event, anonymous)]
     pub struct SecretRevealed {
         pub secret: [u8; 32],
     }
 
-    #[ink(event)]
+    #[ink(event, anonymous)]
     pub struct Claimed {
         pub account: Address,
         pub amount: U256,
         pub asset_kind: u8,
     }
 
-    #[ink(event)]
+    #[ink(event, anonymous)]
     pub struct Refunded {
         pub account: Address,
         pub amount: U256,
@@ -198,12 +198,6 @@ pub mod htlc_escrow {
             }
         }
 
-        // Helper: convert AccountId -> [u8; 32] for metadata-friendly structs
-        fn id32(id: &AccountId) -> [u8; 32] {
-            let mut out = [0u8; 32];
-            out.copy_from_slice(id.as_ref());
-            out
-        }
 
         /// Verify the secret against keccak256.
         fn verify_secret(&self, secret: [u8; 32]) -> bool {
@@ -258,7 +252,7 @@ pub mod htlc_escrow {
             }
 
             let finisher = self.env().caller();
-            if self.resolver_deposit > 0 {
+            if self.resolver_deposit > U256::from(0) {
                 self.pay_native(finisher, self.resolver_deposit)
                     .map_err(|_| ClaimError::NativeTransferFailed)?;
             }
@@ -300,7 +294,7 @@ pub mod htlc_escrow {
             }
 
             let finisher = self.env().caller();
-            if self.resolver_deposit > 0 {
+            if self.resolver_deposit > U256::from(0) {
                 self.pay_native(finisher, self.resolver_deposit)
                     .map_err(|_| RefundError::NativeTransferFailed)?;
             }
