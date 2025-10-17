@@ -1,24 +1,23 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
-#[ink::contract(env = ink::env::DefaultEnvironment)]
+#[ink::contract]
 pub mod htlc_escrow {
     use ink::env::call::{build_call, ExecutionInput, Selector};
     use ink::env::hash::Keccak256;
     use ink::env::DefaultEnvironment;
-    use ink::primitives::U256;
     use ink::prelude::vec::Vec;
 
     // Minimal cross-contract PSP22 interface via trait definition (selectors used for build_call)
     #[ink::trait_definition]
     pub trait PSP22 {
         #[ink(message)]
-        fn transfer(&mut self, to: Address, value: Balance, data: Vec<u8>) -> Result<(), ()>;
+        fn transfer(&mut self, to: AccountId, value: Balance, data: Vec<u8>) -> Result<(), ()>;
 
         #[ink(message)]
         fn transfer_from(
             &mut self,
-            from: Address,
-            to: Address,
+            from: AccountId,
+            to: AccountId,
             value: Balance,
             data: Vec<u8>,
         ) -> Result<(), ()>;
@@ -29,17 +28,17 @@ pub mod htlc_escrow {
     )]
     #[cfg_attr(feature = "std", derive(Debug))]
     pub struct EscrowInfo {
-        pub initiator: Address,
-        pub beneficiary: Address,
+        pub initiator: [u8; 32],
+        pub beneficiary: [u8; 32],
         pub hashed_secret: [u8; 32],
         pub expiry: u64,
-        pub locked_amount: U256,
-        pub resolver_deposit: U256,
+        pub locked_amount: Balance,
+        pub resolver_deposit: Balance,
         pub claimed: bool,
         pub refunded: bool,
         pub now: u64,
         pub asset_kind: u8, // 0 = Native, 1 = PSP22
-        pub psp22_token: Address,
+        pub psp22_token: [u8; 32],
     }
 
     #[derive(scale::Encode, scale::Decode, scale_info::TypeInfo)]
@@ -77,34 +76,37 @@ pub mod htlc_escrow {
     /// Hashed Timelock Escrow supporting native or PSP22 locking.
     #[ink(storage)]
     pub struct HtlcEscrow {
-        initiator: Address,
-        beneficiary: Address,
+        initiator: AccountId,
+        beneficiary: AccountId,
         hashed_secret: [u8; 32],
         expiry: u64, // block number
-        locked_amount: U256,
-        resolver_deposit: U256,
+        locked_amount: Balance,
+        resolver_deposit: Balance,
         claimed: bool,
         refunded: bool,
         asset_kind: AssetKind,
-        psp22_token: Address, // zero if native
+        psp22_token: AccountId, // zero if native
     }
 
-    #[ink(event, anonymous)]
+    #[ink(event)]
     pub struct SecretRevealed {
+        #[ink(topic)]
         pub secret: [u8; 32],
     }
 
-    #[ink(event, anonymous)]
+    #[ink(event)]
     pub struct Claimed {
-        pub account: Address,
-        pub amount: U256,
+        #[ink(topic)]
+        pub to: AccountId,
+        pub amount: Balance,
         pub asset_kind: u8,
     }
 
-    #[ink(event, anonymous)]
+    #[ink(event)]
     pub struct Refunded {
-        pub account: Address,
-        pub amount: U256,
+        #[ink(topic)]
+        pub to: AccountId,
+        pub amount: Balance,
         pub asset_kind: u8,
     }
 
@@ -112,20 +114,20 @@ pub mod htlc_escrow {
         /// Constructor for a native-balance escrow.
         /// Must attach value = locked_amount + resolver_deposit.
         #[ink(constructor, payable)]
-        pub fn new_native(
-            beneficiary: Address,
+        pub fn new(
+            beneficiary: AccountId,
             hashed_secret: [u8; 32],
             expiry: u64,
-            resolver_deposit: U256,
+            resolver_deposit: Balance,
         ) -> Self {
             let initiator = Self::env().caller();
             let total = Self::env().transferred_value();
-            assert!(resolver_deposit > U256::from(0), "resolver_deposit required");
+            assert!(resolver_deposit > 0, "resolver_deposit required");
             assert!(total > resolver_deposit, "insufficient value for lock");
             let locked_amount = total
                 .checked_sub(resolver_deposit)
                 .expect("underflow on locked_amount");
-            assert!(locked_amount > U256::from(0), "zero lock");
+            assert!(locked_amount > 0, "zero lock");
 
             Self {
                 initiator,
@@ -137,7 +139,7 @@ pub mod htlc_escrow {
                 claimed: false,
                 refunded: false,
                 asset_kind: AssetKind::Native,
-                psp22_token: Address::default(),
+                psp22_token: AccountId::from([0u8; 32]),
             }
         }
 
@@ -145,18 +147,18 @@ pub mod htlc_escrow {
         /// Must attach value = resolver_deposit (PSP22 are transferred by factory).
         #[ink(constructor, payable)]
         pub fn new_psp22(
-            token: Address,
-            amount: U256,
-            beneficiary: Address,
+            token: AccountId,
+            amount: Balance,
+            beneficiary: AccountId,
             hashed_secret: [u8; 32],
             expiry: u64,
-            resolver_deposit: U256,
+            resolver_deposit: Balance,
         ) -> Self {
             let initiator = Self::env().caller();
             let native = Self::env().transferred_value();
-            assert!(resolver_deposit > U256::from(0), "resolver_deposit required");
+            assert!(resolver_deposit > 0, "resolver_deposit required");
             assert!(native == resolver_deposit, "attach native deposit only");
-            assert!(amount > U256::from(0), "zero amount");
+            assert!(amount > 0, "zero amount");
 
             Self {
                 initiator,
@@ -176,11 +178,11 @@ pub mod htlc_escrow {
             self.env().block_number().into()
         }
 
-        fn pay_native(&mut self, to: Address, amount: U256) -> Result<(), ()> {
+        fn pay_native(&mut self, to: AccountId, amount: Balance) -> Result<(), ()> {
             self.env().transfer(to, amount).map_err(|_| ())
         }
 
-        fn pay_psp22(&mut self, token: Address, to: Address, amount: U256) -> Result<(), ()> {
+        fn pay_psp22(&mut self, token: AccountId, to: AccountId, amount: Balance) -> Result<(), ()> {
             // Selector matches PSP22::transfer in our PSP22 test token (0xBAF396F5)
             match build_call::<DefaultEnvironment>()
                 .call(token)
@@ -198,6 +200,12 @@ pub mod htlc_escrow {
             }
         }
 
+        // Helper: convert AccountId -> [u8; 32] for metadata-friendly structs
+        fn id32(id: &AccountId) -> [u8; 32] {
+            let mut out = [0u8; 32];
+            out.copy_from_slice(id.as_ref());
+            out
+        }
 
         /// Verify the secret against keccak256.
         fn verify_secret(&self, secret: [u8; 32]) -> bool {
@@ -210,8 +218,8 @@ pub mod htlc_escrow {
         #[ink(message)]
         pub fn get_info(&self) -> EscrowInfo {
             EscrowInfo {
-                initiator: self.initiator,
-                beneficiary: self.beneficiary,
+                initiator: Self::id32(&self.initiator),
+                beneficiary: Self::id32(&self.beneficiary),
                 hashed_secret: self.hashed_secret,
                 expiry: self.expiry,
                 locked_amount: self.locked_amount,
@@ -223,7 +231,7 @@ pub mod htlc_escrow {
                     AssetKind::Native => 0,
                     AssetKind::PSP22 => 1,
                 },
-                psp22_token: self.psp22_token,
+                psp22_token: Self::id32(&self.psp22_token),
             }
         }
 
@@ -252,7 +260,7 @@ pub mod htlc_escrow {
             }
 
             let finisher = self.env().caller();
-            if self.resolver_deposit > U256::from(0) {
+            if self.resolver_deposit > 0 {
                 self.pay_native(finisher, self.resolver_deposit)
                     .map_err(|_| ClaimError::NativeTransferFailed)?;
             }
@@ -261,7 +269,7 @@ pub mod htlc_escrow {
 
             self.env().emit_event(SecretRevealed { secret });
             self.env().emit_event(Claimed {
-                account: self.beneficiary,
+                to: self.beneficiary,
                 amount: self.locked_amount,
                 asset_kind: match self.asset_kind {
                     AssetKind::Native => 0,
@@ -294,7 +302,7 @@ pub mod htlc_escrow {
             }
 
             let finisher = self.env().caller();
-            if self.resolver_deposit > U256::from(0) {
+            if self.resolver_deposit > 0 {
                 self.pay_native(finisher, self.resolver_deposit)
                     .map_err(|_| RefundError::NativeTransferFailed)?;
             }
@@ -302,7 +310,7 @@ pub mod htlc_escrow {
             self.refunded = true;
 
             self.env().emit_event(Refunded {
-                account: self.initiator,
+                to: self.initiator,
                 amount: self.locked_amount,
                 asset_kind: match self.asset_kind {
                     AssetKind::Native => 0,

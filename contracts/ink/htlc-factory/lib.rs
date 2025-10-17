@@ -1,25 +1,25 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
-#[ink::contract(env = ink::env::DefaultEnvironment)]
+#[ink::contract]
 pub mod htlc_factory {
     use htlc_escrow::htlc_escrow::HtlcEscrowRef;
     use ink::env::call::{build_call, ExecutionInput, Selector};
     use ink::env::DefaultEnvironment;
     use ink::prelude::vec::Vec;
-    use ink::primitives::H256 as CodeHash;
-    use ink::primitives::U256;
+    use ink::primitives::Hash as CodeHash;
+    use ink::ToAccountId;
 
     // Optional interface marker for clarity (we use explicit selectors for calls)
     #[ink::trait_definition]
     pub trait PSP22 {
         #[ink(message)]
-        fn transfer(&mut self, to: Address, value: Balance, data: Vec<u8>) -> Result<(), ()>;
+        fn transfer(&mut self, to: AccountId, value: Balance, data: Vec<u8>) -> Result<(), ()>;
 
         #[ink(message)]
         fn transfer_from(
             &mut self,
-            from: Address,
-            to: Address,
+            from: AccountId,
+            to: AccountId,
             value: Balance,
             data: Vec<u8>,
         ) -> Result<(), ()>;
@@ -32,16 +32,18 @@ pub mod htlc_factory {
         escrow_code_hash: CodeHash,
     }
 
-    #[ink(event, anonymous)]
+    #[ink(event)]
     pub struct EscrowCreated {
-        pub escrow: Address,
-        pub beneficiary: Address,
+        #[ink(topic)]
+        pub escrow: AccountId,
+        #[ink(topic)]
+        pub beneficiary: AccountId,
         pub expiry: u64,
-        pub locked_amount: U256,
-        pub resolver_deposit: U256,
+        pub locked_amount: Balance,
+        pub resolver_deposit: Balance,
         pub hashed_secret: [u8; 32],
         pub is_psp22: bool,
-        pub psp22_token: Address,
+        pub psp22_token: AccountId,
     }
 
     impl HtlcFactory {
@@ -53,33 +55,32 @@ pub mod htlc_factory {
 
         fn instantiate_native(
             &self,
-            beneficiary: Address,
+            beneficiary: AccountId,
             hashed_secret: [u8; 32],
             expiry: u64,
-            resolver_deposit: U256,
+            resolver_deposit: Balance,
             salt: Option<[u8; 32]>,
-            endowment: U256,
-        ) -> Address {
+            endowment: Balance,
+        ) -> AccountId {
             // total value is endowment: locked_amount + resolver_deposit
             let escrow = HtlcEscrowRef::new_native(beneficiary, hashed_secret, expiry, resolver_deposit)
                 .endowment(endowment)
                 .code_hash(self.escrow_code_hash)
-                .salt_bytes(salt)
-                .try_instantiate()
-                .expect("instantiate escrow");
-            escrow.to_address()
+                .salt_bytes(salt.unwrap_or_default())
+                .instantiate();
+            escrow.to_account_id()
         }
 
         fn instantiate_psp22(
             &self,
-            token: Address,
-            amount: U256,
-            beneficiary: Address,
+            token: AccountId,
+            amount: Balance,
+            beneficiary: AccountId,
             hashed_secret: [u8; 32],
             expiry: u64,
-            resolver_deposit: U256,
+            resolver_deposit: Balance,
             salt: Option<[u8; 32]>,
-        ) -> Address {
+        ) -> AccountId {
             // endowment is resolver_deposit; PSP22 will be transferred via transfer_from below.
             let escrow = HtlcEscrowRef::new_psp22(
                 token,
@@ -91,10 +92,9 @@ pub mod htlc_factory {
             )
             .endowment(resolver_deposit)
             .code_hash(self.escrow_code_hash)
-            .salt_bytes(salt)
-            .try_instantiate()
-            .expect("instantiate escrow");
-            escrow.to_address()
+            .salt_bytes(salt.unwrap_or_default())
+            .instantiate();
+            escrow.to_account_id()
         }
 
         /// Create a native-balance escrow.
@@ -102,16 +102,16 @@ pub mod htlc_factory {
         #[ink(message, payable)]
         pub fn create_native_escrow(
             &mut self,
-            beneficiary: Address,
+            beneficiary: AccountId,
             hashed_secret: [u8; 32],
             expiry: u64,
-            resolver_deposit: U256,
+            resolver_deposit: Balance,
             salt: Option<[u8; 32]>,
-        ) -> Address {
-            let total: U256 = self.env().transferred_value();
-            assert!(resolver_deposit > U256::from(0), "resolver_deposit required");
+        ) -> AccountId {
+            let total = self.env().transferred_value();
+            assert!(resolver_deposit > 0, "resolver_deposit required");
             assert!(total > resolver_deposit, "insufficient value for lock");
-            let locked_amount: U256 = total
+            let locked_amount = total
                 .checked_sub(resolver_deposit)
                 .expect("underflow on locked_amount");
 
@@ -132,7 +132,7 @@ pub mod htlc_factory {
                 resolver_deposit,
                 hashed_secret,
                 is_psp22: false,
-                psp22_token: Address::default(),
+                psp22_token: AccountId::from([0u8; 32]),
             });
 
             escrow_addr
@@ -144,18 +144,18 @@ pub mod htlc_factory {
         #[ink(message, payable)]
         pub fn create_psp22_escrow(
             &mut self,
-            token: Address,
-            amount: U256,
-            beneficiary: Address,
+            token: AccountId,
+            amount: Balance,
+            beneficiary: AccountId,
             hashed_secret: [u8; 32],
             expiry: u64,
-            resolver_deposit: U256,
+            resolver_deposit: Balance,
             salt: Option<[u8; 32]>,
-        ) -> Address {
-            let value: U256 = self.env().transferred_value();
-            assert!(resolver_deposit > U256::from(0), "resolver_deposit required");
+        ) -> AccountId {
+            let value = self.env().transferred_value();
+            assert!(resolver_deposit > 0, "resolver_deposit required");
             assert!(value == resolver_deposit, "attach native deposit only");
-            assert!(amount > U256::from(0), "zero amount");
+            assert!(amount > 0, "zero amount");
 
             let escrow_addr = self.instantiate_psp22(
                 token,

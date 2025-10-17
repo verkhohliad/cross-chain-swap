@@ -1,6 +1,0 @@
-[target.riscv64emac-unknown-none-polkavm]
-rustflags = [
-  "-C", "relocation-model=pic",
-  "-C", "link-arg=-zstack-size=131072",
-  "-C", "panic=abort"
-]
