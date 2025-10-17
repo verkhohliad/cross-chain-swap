@@ -1,0 +1,33 @@
+{
+  "network": "ethereum-mainnet",
+  "chainId": 1,
+  "oneInch": {
+    "routerV6_IOrderMixin": "0x111111125421cA6dC452d289314280A0f8842A65",
+    "settlement": "0xA88800CD213dA5Ae406ce248380802BD53b47647",
+    "whitelistResolverRegistry": "0xF55684BC536487394B423e70567413faB8e45E26",
+    "escrowFactory": "0xA7bCb4EaC8964306f9E3764F67db6A7Af6dDf99a",
+    "oneInchToken": "0x111111111117dC0aa78b770fA6A738034120C302"
+  },
+  "erc20": {
+    "WETH": {
+      "address": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+      "decimals": 18,
+      "symbol": "WETH"
+    },
+    "USDC": {
+      "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606EB48",
+      "decimals": 6,
+      "symbol": "USDC"
+    },
+    "ONEINCH": {
+      "address": "0x111111111117dC0aa78b770fA6A738034120C302",
+      "decimals": 18,
+      "symbol": "1INCH"
+    },
+    "GNO": {
+      "address": "0x6810e776880C02933D47DB1b9fc05908e5386b96",
+      "decimals": 18,
+      "symbol": "GNO"
+    }
+  }
+}

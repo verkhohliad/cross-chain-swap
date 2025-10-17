@@ -1,0 +1,28 @@
+[
+  {
+    "type": "function",
+    "name": "deploySrc",
+    "stateMutability": "payable",
+    "inputs": [
+      { "name": "srcImmutables", "type": "bytes" },
+      { "name": "order", "type": "bytes" },
+      { "name": "r", "type": "bytes32" },
+      { "name": "yParityAndS", "type": "bytes32" },
+      { "name": "fillAmount", "type": "uint256" },
+      { "name": "trait", "type": "uint256" },
+      { "name": "args", "type": "bytes" }
+    ],
+    "outputs": []
+  },
+  {
+    "type": "function",
+    "name": "withdraw",
+    "stateMutability": "nonpayable",
+    "inputs": [
+      { "name": "escrow", "type": "address" },
+      { "name": "secret", "type": "bytes32" },
+      { "name": "srcImmutables", "type": "bytes" }
+    ],
+    "outputs": []
+  }
+]

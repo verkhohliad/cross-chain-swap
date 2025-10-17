@@ -1,0 +1,34 @@
+{
+  "evm": {
+    "name": "ethereum-mainnet",
+    "chainId": 1,
+    "rpcUrl": "SET_ME_MAINNET_RPC_URL",
+    "oneInch": {
+      "routerV6_IOrderMixin": "0x111111125421cA6dC452d289314280A0f8842A65",
+      "settlement": "0xA88800CD213dA5Ae406ce248380802BD53b47647",
+      "whitelistResolverRegistry": "0xF55684BC536487394B423e70567413faB8e45E26",
+      "escrowFactory": "0xA7bCb4EaC8964306f9E3764F67db6A7Af6dDf99a",
+      "oneInchToken": "0x111111111117dC0aa78b770fA6A738034120C302"
+    }
+  },
+  "substrate": {
+    "name": "local-contracts-node",
+    "wsUrl": "ws://127.0.0.1:9944",
+    "httpUrl": "http://127.0.0.1:9933",
+    "assumedBlockTimeSec": 6
+  },
+  "timeouts": {
+    "ethToSubstrate": {
+      "evmMinutes": 30,
+      "substrateMinutes": 20
+    },
+    "substrateToEth": {
+      "substrateMinutes": 30,
+      "evmMinutes": 20
+    }
+  },
+  "deposits": {
+    "evmNativeEth": "0.005",
+    "substrateNative": "0.1"
+  }
+}

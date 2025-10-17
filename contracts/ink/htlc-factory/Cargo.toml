@@ -1,0 +1,36 @@
+[package]
+name = "htlc_factory"
+version = "0.1.0"
+authors = ["Cross-Chain Swap Team"]
+edition = "2021"
+license = "Apache-2.0"
+repository = "https://github.com/verkhohliad/cross-chain-swap"
+description = "ink! HTLC factory that instantiates htlc_escrow and optionally pulls PSP22 tokens via transfer_from"
+
+[lib]
+name = "htlc_factory"
+path = "lib.rs"
+
+[dependencies]
+ink = { version = "6.0.0-alpha", default-features = false }
+scale = { package = "parity-scale-codec", version = "3", default-features = false, features = ["derive"] }
+scale-info = { version = "2", default-features = false, features = ["derive"] }
+htlc_escrow = { path = "../htlc-escrow", default-features = false, features = ["ink-as-dependency"] }
+
+[dev-dependencies]
+ink = { version = "6.0.0-alpha", default-features = false, features = ["std"] }
+
+[features]
+default = ["std"]
+std = [
+    "ink/std",
+    "scale/std",
+    "scale-info/std",
+    "htlc_escrow/std"
+]
+ink-as-dependency = []
+
+[package.metadata.contract]
+authors = ["Cross-Chain Swap Team"]
+name = "htlc_factory"
+version = "0.1.0"

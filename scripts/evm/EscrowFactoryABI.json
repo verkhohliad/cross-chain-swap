@@ -1,0 +1,13 @@
+[
+  {
+    "type": "function",
+    "name": "addressOfEscrowSrc",
+    "stateMutability": "view",
+    "inputs": [
+      { "name": "srcImmutables", "type": "bytes" }
+    ],
+    "outputs": [
+      { "name": "escrow", "type": "address" }
+    ]
+  }
+]

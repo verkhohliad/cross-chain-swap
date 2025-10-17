@@ -1,0 +1,22 @@
+{
+  "name": "substrate-tools",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Utility scripts to interact with local Substrate Contracts node (faucet, wait, etc.)",
+  "license": "Apache-2.0",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "faucet": "ts-node faucet.ts",
+    "wait": "node wait.js"
+  },
+  "dependencies": {
+    "@polkadot/api": "^12.1.1",
+    "@polkadot/keyring": "^12.1.1",
+    "@polkadot/util-crypto": "^12.1.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.8.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.5.4"
+  }
+}
