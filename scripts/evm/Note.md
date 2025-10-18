@@ -1,3 +1,6 @@
+1. Call deployResolver.js and get the Resolver contract address. (Done)
+2. Call evm_example.js
+
 Log result from resolver.js
 
 ```
