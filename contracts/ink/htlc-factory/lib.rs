@@ -8,6 +8,7 @@ pub mod htlc_factory {
     use ink::prelude::vec::Vec;
     use ink::primitives::H256 as CodeHash;
     use ink::primitives::U256;
+    use ink::ToAddr;
 
     // Optional interface marker for clarity (we use explicit selectors for calls)
     #[ink::trait_definition]
@@ -65,9 +66,9 @@ pub mod htlc_factory {
                 .endowment(endowment)
                 .code_hash(self.escrow_code_hash)
                 .salt_bytes(salt)
-                .try_instantiate()
-                .expect("instantiate escrow");
-            escrow.to_address()
+                .instantiate();
+            let escrow_addr: Address = escrow.to_addr();
+            escrow_addr
         }
 
         fn instantiate_psp22(
@@ -92,9 +93,9 @@ pub mod htlc_factory {
             .endowment(resolver_deposit)
             .code_hash(self.escrow_code_hash)
             .salt_bytes(salt)
-            .try_instantiate()
-            .expect("instantiate escrow");
-            escrow.to_address()
+            .instantiate();
+            let escrow_addr: Address = escrow.to_addr();
+            escrow_addr
         }
 
         /// Create a native-balance escrow.
