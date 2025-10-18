@@ -34,3 +34,15 @@ jq -r '.source.hash' ./target/ink/htlc_escrow.contract
 cargo contract instantiate --args 0xd6f6ca7eab3cf6b564ed44b1c6ff245d9158f3cfbff7cdd352cf4f515ff0f6c3 --suri //Alice -x
 ```
 
+### some things more
+
+```bash
+cargo contract call --contract 0xfbc1901fbd623893b206d01900e267f75f09ad44 --message get_escrow_code_hash --suri //Alice
+cargo contract call --contract 0xfbc1901fbd623893b206d01900e267f75f09ad44 --message get_last_escrow --suri //Alice
+
+// secret - 0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+cargo contract call --contract 0xfbc1901fbd623893b206d01900e267f75f09ad44 --message create_native_escrow --args 0x1111111111111111111111111111111111111111 0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef 1000 1000000000000 None --value 6000000000000 --suri //Alice --skip-confirm -x
+cargo contract call --contract 0xfbc1901fbd623893b206d01900e267f75f09ad44 --message create_native_escrow --args 0x1111111111111111111111111111111111111111 0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef 1000 1000000000000 None --value 6000000000000 --suri //Alice --gas 3795825718 --proof-size 101390 --skip-dry-run --skip-confirm --storage-deposit-limit 0 -x 
+
+deployed through factory - 0x4c6777e493e3f0ca7848df47c8fdb8ce8b87403b
+```

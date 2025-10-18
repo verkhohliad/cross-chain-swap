@@ -31,6 +31,7 @@ pub mod htlc_factory {
     #[ink(storage)]
     pub struct HtlcFactory {
         escrow_code_hash: CodeHash,
+        last_escrow: Address,
     }
 
     #[ink(event, anonymous)]
@@ -49,7 +50,7 @@ pub mod htlc_factory {
         /// Provide the code hash of the HtlcEscrow contract on deployment.
         #[ink(constructor)]
         pub fn new(escrow_code_hash: CodeHash) -> Self {
-            Self { escrow_code_hash }
+            Self { escrow_code_hash, last_escrow: Address::default() }
         }
 
         fn instantiate_native(
@@ -124,6 +125,7 @@ pub mod htlc_factory {
                 salt,
                 total,
             );
+            self.last_escrow = escrow_addr;
 
             self.env().emit_event(EscrowCreated {
                 escrow: escrow_addr,
@@ -167,6 +169,7 @@ pub mod htlc_factory {
                 resolver_deposit,
                 salt,
             );
+            self.last_escrow = escrow_addr;
 
             // Move PSP22 from caller to escrow using explicit selector for transfer_from
             // Selector matches our PSP22 test token #[ink(message, selector = 0x54B3C76F)]
@@ -199,6 +202,12 @@ pub mod htlc_factory {
             });
 
             escrow_addr
+        }
+
+        /// Returns the last created escrow address.
+        #[ink(message)]
+        pub fn get_last_escrow(&self) -> Address {
+            self.last_escrow
         }
 
         /// Returns the configured escrow code hash.
