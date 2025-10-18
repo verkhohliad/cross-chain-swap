@@ -788,86 +788,128 @@ const abi_factory = {
   version: 6,
 };
 
-async function main() {
-  // Connect to the local Substrate node
+// * Sends a transaction and waits for its finalization on the chain.
+// * @param {import('@polkadot/api/types').SubmittableExtrinsic} tx The extrinsic to sign and send.
+// * @param {import('@polkadot/keyring/types').KeyringPair} account The account used to sign the transaction.
+// * @returns {Promise<string>} The transaction hash (Hex string) upon finalization.
+// */
+async function waitForFinalization(tx, account) {
   const wsProvider = new WsProvider("wss://testnet-passet-hub.polkadot.io");
   const api = await ApiPromise.create({ provider: wsProvider });
+  return new Promise(async (resolve, reject) => {
+    let transactionHash = "";
+    const unsub = await tx
+      .signAndSend(account, (result) => {
+        // Log the transaction hash as soon as it's available
+        if (result.txHash) {
+          transactionHash = result.txHash.toHex();
+        }
 
-  const factory_contract = new ContractPromise(
-    api,
-    abi_factory,
-    ESCROW_FACTORY_ADDRESS
-  );
-  // maximum gas to be consumed for the call. if limit is too small the call will fail.
-  const gasLimit = api.registry.createType("WeightV2", {
-    refTime: 1000000000,
-    proofSize: 50000,
-  }); // A more realistic initial gas limit  // a limit to how much Balance to be used to pay for the storage created by the contract call
-  // if null is passed, unlimited balance can be used
-  const storageDepositLimit = null;
-  // balance to transfer to the contract account. use only with payable messages, will fail otherwise.
-  // formerly know as "endowment"
-  const value = api.registry.createType("Balance", 1000);
+        console.log(`Current status is ${result.status.type}`);
 
-  // Create a keyring instance
-  const keyring = new Keyring({ type: "sr25519" });
+        if (result.status.isInBlock) {
+          console.log(
+            `Transaction included at blockHash ${result.status.asInBlock.toHex()}`
+          );
+          console.log(`Transaction hash: ${transactionHash}`);
+        }
 
-  // Add Alice to the keyring for testing
-  const alice = keyring.addFromUri(
-    "flight dust express talent mirror anchor style iron need labor spray kit"
-  );
+        if (result.status.isFinalized) {
+          console.log(`\n✅ Transaction Finalized!`);
+          console.log(`Final BlockHash: ${result.status.asFinalized.toHex()}`);
+          console.log(`Final Transaction Hash: ${transactionHash}`);
 
-  // Random data for create_native_escrow call
-  const escrowData = {
-    // Beneficiary address (32-byte AccountId)
-    beneficiary: "0x1234567890123456789012345678901234567890", // Example address
+          // Unsubscribe from the status updates
+          unsub();
 
-    // Hashed secret (32 bytes) - in practice, use keccak256(your_secret)
-    hashedSecret:
-      "0xa1b2c3d4e5f60718293a4b5c6d7e8f90112233445566778899aabbccddeeff11",
+          if (result.dispatchError) {
+            console.error(
+              "Transaction failed with dispatch error:",
+              result.dispatchError.toString()
+            );
+            // Extract error information if possible
+            let errorInfo = "Unknown error";
+            if (result.dispatchError.isModule) {
+              const mod = result.dispatchError.asModule;
+              // FIX: Use the passed API's registry to ensure it exists
+              const { section, method } = api.registry.findMetaError(mod);
+              errorInfo = `${section}.${method}`;
+            }
+            reject(new Error(`Transaction failed: ${errorInfo}`));
+          } else {
+            // Transaction finalized and no dispatch error means success
+            resolve(transactionHash);
+          }
+        }
+      })
+      .catch((error) => {
+        // Handle immediate submission errors (e.g., failed signing, network issue)
+        console.error("Transaction submission failed:", error.message);
+        unsub();
+        reject(error);
+      });
+  });
+}
 
-    // Expiry timestamp (Unix timestamp in seconds)
-    expiry: Math.floor(Date.now() / 1000) + 86400, // 24 hours from now
+async function main() {
+  let api;
+  try {
+    // Connect to the Substrate node
+    const wsProvider = new WsProvider("wss://testnet-passet-hub.polkadot.io");
+    api = await ApiPromise.create({ provider: wsProvider });
+    console.log(`Connected to chain: ${api.runtimeVersion.specName}`);
 
-    // Resolver deposit (as string to avoid precision loss)
-    resolverDeposit: "1000000000000", // 1 token with 12 decimals
-
-    // Salt for deterministic address (optional, 32 bytes)
-    salt: "0xdeadbeefcafebabe123456789abcdef000112233445566778899aabbccddeeff",
-
-    // Total value to transfer (locked_amount + resolver_deposit)
-    // Must be > resolver_deposit
-    transferValue: "5000000000000", // 5 tokens total (4 locked + 1 deposit)
-  };
-  const { gasRequired, storageDeposit, result, output } =
-    await factory_contract.query.createNativeEscrow(
-      alice.address,
-      {
-        gasLimit: api.registry.createType("WeightV2", {
-          refTime: 3000000000000 * 6,
-          proofSize: 131072 * 6,
-        }),
-        storageDepositLimit: null,
-        value: escrowData.transferValue,
-      },
-      escrowData.beneficiary,
-      escrowData.hashedSecret,
-      escrowData.expiry,
-      escrowData.resolverDeposit,
-      escrowData.salt
+    const factory_contract = new ContractPromise(
+      api,
+      abi_factory,
+      ESCROW_FACTORY_ADDRESS
     );
 
-  console.log("Gas Required:", gasRequired.toHuman());
-  console.log("Storage Deposit:", storageDeposit.toHuman());
-  console.log("Result:", result.toHuman());
-  console.log("Output: ", output.toHuman());
+    // Create a keyring instance
+    const keyring = new Keyring({ type: "sr25519" });
 
-  if (result.isOk) {
-    // Send the actual transaction
-    const unsub = await factory_contract.tx
-      .createNativeEscrow(
+    // Add Alice to the keyring for testing (using the seed provided in the original code)
+    const alice = keyring.addFromUri(
+      "flight dust express talent mirror anchor style iron need labor spray kit"
+    );
+
+    // Random data for create_native_escrow call
+    const escrowData = {
+      // Beneficiary address (20-byte H160 type expected by ink! Address/AccountId)
+      // This is a common test address in Polkadot-like EVM chains.
+      beneficiary: "0x1234567890123456789012345678901234567890",
+
+      // Hashed secret (32 bytes)
+      hashedSecret:
+        "0xa1b2c3d4e5f60718293a4b5c6d7e8f90112233445566778899aabbccddeeff11",
+
+      // Expiry timestamp (Unix timestamp in milliseconds converted to seconds)
+      expiry: Math.floor(Date.now() / 1000) + 3600 * 24, // 24 hours from now
+
+      // Resolver deposit (as string with 12 decimals - assuming pAsset Hub native tokens have 12 decimals)
+      resolverDeposit: "1000000000000",
+
+      // Salt for deterministic address (optional, 32 bytes)
+      salt: "0xdeadbeefcafebabe123456789abcdef000112233445566778899aabbccddeeff",
+
+      // Total value to transfer (locked_amount + resolver_deposit)
+      // 5 tokens total (4 locked + 1 deposit)
+      transferValue: "5000000000000",
+    };
+
+    console.log("--- 1. Querying for Gas Estimation (Dry Run) ---");
+
+    // Use a large, safe gas limit for the query itself
+    const queryGasLimit = api.registry.createType("WeightV2", {
+      refTime: 3000000000000,
+      proofSize: 131072,
+    });
+
+    const { gasRequired, storageDeposit, result, output } =
+      await factory_contract.query.createNativeEscrow(
+        alice.address, // Caller address
         {
-          gasLimit: gasRequired,
+          gasLimit: queryGasLimit,
           storageDepositLimit: null,
           value: escrowData.transferValue,
         },
@@ -876,25 +918,182 @@ async function main() {
         escrowData.expiry,
         escrowData.resolverDeposit,
         escrowData.salt
-      )
-      .signAndSend(alice, (result) => {
-        console.log(`Current status is ${result.status}`);
-        if (result.status.isInBlock) {
-          console.log(
-            `Transaction included at blockHash ${result.status.asInBlock}`
-          );
-        } else if (result.status.isFinalized) {
-          console.log(
-            `Transaction finalized at blockHash ${result.status.asFinalized}`
-          );
-          unsub();
-        }
-      });
-  } else {
-    console.log("Result is not ok");
+      );
+
+    console.log("Gas Required:", gasRequired.toHuman());
+    console.log("Storage Deposit:", storageDeposit.toHuman());
+
+    if (result.isOk) {
+      const escrowAddress = output.toHuman().Ok;
+      console.log(`Simulated Escrow Creation successful.`);
+      console.log(`New Escrow Address (Simulation): ${escrowAddress}`);
+
+      // --- 2. Sending Actual Transaction and Waiting ---
+
+      // Construct the Extrinsic
+      const tx = factory_contract.tx.createNativeEscrow(
+        {
+          gasLimit: gasRequired, // Use the required gas from the query
+          storageDepositLimit: null,
+          value: escrowData.transferValue,
+        },
+        escrowData.beneficiary,
+        escrowData.hashedSecret,
+        escrowData.expiry,
+        escrowData.resolverDeposit,
+        escrowData.salt
+      );
+
+      console.log("\n--- 2. Sending Transaction and Awaiting Finalization ---");
+
+      // Await the promise to ensure the script does not exit until finalized
+      const txHash = await waitForFinalization(tx, alice);
+
+      // Log the Block Explorer link using the final hash
+      console.log(
+        `\n🔗 Block Explorer Link: https://blockscout-passet-hub.parity-testnet.parity.io/extrinsic/${txHash}`
+      );
+    } else {
+      console.error("Query failed. Cannot proceed with transaction.");
+      console.error("Query Error Result:", result.toHuman());
+    }
+  } catch (error) {
+    console.error("\nAn error occurred during execution:", error.message);
+  } finally {
+    // Ensure disconnect happens only after all awaits are complete
+    if (api) {
+      console.log("\nDisconnecting API...");
+      await api.disconnect();
+    }
   }
-  // Disconnect from the node
-  await api.disconnect();
 }
 
 main().catch(console.error);
+
+// async function main() {
+//   // Connect to the local Substrate node
+//   const wsProvider = new WsProvider("wss://testnet-passet-hub.polkadot.io");
+//   const api = await ApiPromise.create({ provider: wsProvider });
+
+//   const factory_contract = new ContractPromise(
+//     api,
+//     abi_factory,
+//     ESCROW_FACTORY_ADDRESS
+//   );
+//   // maximum gas to be consumed for the call. if limit is too small the call will fail.
+//   const gasLimit = api.registry.createType("WeightV2", {
+//     refTime: 1000000000,
+//     proofSize: 50000,
+//   }); // A more realistic initial gas limit  // a limit to how much Balance to be used to pay for the storage created by the contract call
+//   // if null is passed, unlimited balance can be used
+//   const storageDepositLimit = null;
+//   // balance to transfer to the contract account. use only with payable messages, will fail otherwise.
+//   // formerly know as "endowment"
+//   const value = api.registry.createType("Balance", 1000);
+
+//   // Create a keyring instance
+//   const keyring = new Keyring({ type: "sr25519" });
+
+//   // Add Alice to the keyring for testing
+//   const alice = keyring.addFromUri(
+//     "flight dust express talent mirror anchor style iron need labor spray kit"
+//   );
+
+//   // Random data for create_native_escrow call
+//   const escrowData = {
+//     // Beneficiary address (32-byte AccountId)
+//     beneficiary: "0x1234567890123456789012345678901234567890", // Example address
+
+//     // Hashed secret (32 bytes) - in practice, use keccak256(your_secret)
+//     hashedSecret:
+//       "0xa1b2c3d4e5f60718293a4b5c6d7e8f90112233445566778899aabbccddeeff11",
+
+//     // Expiry timestamp (Unix timestamp in seconds)
+//     expiry: Math.floor(Date.now() / 1000) + 86400, // 24 hours from now
+
+//     // Resolver deposit (as string to avoid precision loss)
+//     resolverDeposit: "1000000000000", // 1 token with 12 decimals
+
+//     // Salt for deterministic address (optional, 32 bytes)
+//     salt: "0xdeadbeefcafebabe123456789abcdef000112233445566778899aabbccddeeff",
+
+//     // Total value to transfer (locked_amount + resolver_deposit)
+//     // Must be > resolver_deposit
+//     transferValue: "5000000000000", // 5 tokens total (4 locked + 1 deposit)
+//   };
+//   const { gasRequired, storageDeposit, result, output } =
+//     await factory_contract.query.createNativeEscrow(
+//       alice.address,
+//       {
+//         gasLimit: api.registry.createType("WeightV2", {
+//           refTime: 3000000000000 * 6,
+//           proofSize: 131072 * 6,
+//         }),
+//         storageDepositLimit: null,
+//         value: escrowData.transferValue,
+//       },
+//       escrowData.beneficiary,
+//       escrowData.hashedSecret,
+//       escrowData.expiry,
+//       escrowData.resolverDeposit,
+//       escrowData.salt
+//     );
+
+//   console.log("Gas Required:", gasRequired.toHuman());
+//   console.log("Storage Deposit:", storageDeposit.toHuman());
+//   console.log("Result:", result.toHuman());
+//   console.log("Output: ", output.toHuman());
+
+//   if (result.isOk || (result.toHuman && result.toHuman().Ok)) {
+//     // Send the actual transaction
+//     const unsub = await factory_contract.tx
+//       .createNativeEscrow(
+//         {
+//           gasLimit: gasRequired,
+//           storageDepositLimit: null,
+//           value: escrowData.transferValue,
+//         },
+//         escrowData.beneficiary,
+//         escrowData.hashedSecret,
+//         escrowData.expiry,
+//         escrowData.resolverDeposit,
+//         escrowData.salt
+//       )
+//       .signAndSend(alice, (result) => {
+//         console.log(`Current status is ${result.status}`);
+
+//         if (result.status.isInBlock) {
+//           console.log(
+//             `Transaction included at blockHash ${result.status.asInBlock}`
+//           );
+//           console.log(`Transaction hash: ${result.txHash.toHex()}`);
+//           console.log(
+//             `Block explorer: https://blockscout-passet-hub.parity-testnet.parity.io//extrinsic/${result.txHash.toHex()}`
+//           );
+//         } else if (result.status.isFinalized) {
+//           console.log(
+//             `Transaction finalized at blockHash ${result.status.asFinalized}`
+//           );
+//           console.log(`Final transaction hash: ${result.txHash.toHex()}`);
+//           console.log(
+//             `Block explorer: https://blockscout-passet-hub.parity-testnet.parity.io/extrinsic/${result.txHash.toHex()}`
+//           );
+//           unsub();
+//         }
+
+//         if (result.dispatchError) {
+//           console.log(
+//             "Transaction failed with error:",
+//             result.dispatchError.toString()
+//           );
+//           unsub();
+//         }
+//       });
+//   } else {
+//     console.log("Result is not ok");
+//   }
+//   // Disconnect from the node
+//   await api.disconnect();
+// }
+
+// main().catch(console.error);
