@@ -127,6 +127,9 @@ pub mod htlc_escrow {
                 .expect("underflow on locked_amount");
             assert!(locked_amount > U256::from(0), "zero lock");
 
+            let now_block: u64 = Self::env().block_number().into();
+            let expiry = now_block.saturating_add(expiry);
+
             Self {
                 initiator,
                 beneficiary,
@@ -155,8 +158,11 @@ pub mod htlc_escrow {
             let initiator = Self::env().caller();
             let native = Self::env().transferred_value();
             assert!(resolver_deposit > U256::from(0), "resolver_deposit required");
-            assert!(native == resolver_deposit, "attach native deposit only");
+            assert!(native >= resolver_deposit, "attach native deposit only");
             assert!(amount > U256::from(0), "zero amount");
+
+            let now_block: u64 = Self::env().block_number().into();
+            let expiry = now_block.saturating_add(expiry);
 
             Self {
                 initiator,
@@ -218,7 +224,7 @@ pub mod htlc_escrow {
                 resolver_deposit: self.resolver_deposit,
                 claimed: self.claimed,
                 refunded: self.refunded,
-                now: self.now(),
+                now: (self.env().block_number().into()),
                 asset_kind: match self.asset_kind {
                     AssetKind::Native => 0,
                     AssetKind::PSP22 => 1,
@@ -230,31 +236,33 @@ pub mod htlc_escrow {
         /// Claim the escrow with the correct secret before expiry.
         #[ink(message)]
         pub fn claim(&mut self, secret: [u8; 32]) -> Result<(), ClaimError> {
-            if self.claimed || self.refunded {
-                return Err(ClaimError::AlreadyFinalized);
-            }
-            if self.now() >= self.expiry {
-                return Err(ClaimError::Expired);
-            }
-            if !self.verify_secret(secret) {
-                return Err(ClaimError::BadSecret);
-            }
+            // Assert with string messages so dry-runs surface precise reasons
+            assert!(!self.claimed && !self.refunded, "already finalized");
+            let now_block: u64 = self.env().block_number().into();
+            assert!(now_block <= self.expiry, "expired");
+            assert!(self.verify_secret(secret), "bad secret");
 
             match self.asset_kind {
                 AssetKind::Native => {
-                    self.pay_native(self.beneficiary, self.locked_amount)
-                        .map_err(|_| ClaimError::NativeTransferFailed)?
+                    assert!(
+                        self.pay_native(self.beneficiary, self.locked_amount).is_ok(),
+                        "beneficiary transfer failed"
+                    );
                 }
                 AssetKind::PSP22 => {
-                    self.pay_psp22(self.psp22_token, self.beneficiary, self.locked_amount)
-                        .map_err(|_| ClaimError::PSP22TransferFailed)?
+                    assert!(
+                        self.pay_psp22(self.psp22_token, self.beneficiary, self.locked_amount).is_ok(),
+                        "psp22 transfer failed"
+                    );
                 }
             }
 
             let finisher = self.env().caller();
             if self.resolver_deposit > U256::from(0) {
-                self.pay_native(finisher, self.resolver_deposit)
-                    .map_err(|_| ClaimError::NativeTransferFailed)?;
+                assert!(
+                    self.pay_native(finisher, self.resolver_deposit).is_ok(),
+                    "deposit transfer failed"
+                );
             }
 
             self.claimed = true;
@@ -275,28 +283,32 @@ pub mod htlc_escrow {
         /// Refund to initiator after expiry if not claimed.
         #[ink(message)]
         pub fn refund(&mut self) -> Result<(), RefundError> {
-            if self.claimed || self.refunded {
-                return Err(RefundError::AlreadyFinalized);
-            }
-            if self.now() < self.expiry {
-                return Err(RefundError::NotExpired);
-            }
+            // Assert with string messages so dry-runs surface precise reasons
+            assert!(!self.claimed && !self.refunded, "already finalized");
+            let now_block: u64 = self.env().block_number().into();
+            assert!(now_block >= self.expiry, "not expired");
 
             match self.asset_kind {
                 AssetKind::Native => {
-                    self.pay_native(self.initiator, self.locked_amount)
-                        .map_err(|_| RefundError::NativeTransferFailed)?
+                    assert!(
+                        self.pay_native(self.initiator, self.locked_amount).is_ok(),
+                        "initiator transfer failed"
+                    );
                 }
                 AssetKind::PSP22 => {
-                    self.pay_psp22(self.psp22_token, self.initiator, self.locked_amount)
-                        .map_err(|_| RefundError::PSP22TransferFailed)?
+                    assert!(
+                        self.pay_psp22(self.psp22_token, self.initiator, self.locked_amount).is_ok(),
+                        "psp22 transfer failed"
+                    );
                 }
             }
 
             let finisher = self.env().caller();
             if self.resolver_deposit > U256::from(0) {
-                self.pay_native(finisher, self.resolver_deposit)
-                    .map_err(|_| RefundError::NativeTransferFailed)?;
+                assert!(
+                    self.pay_native(finisher, self.resolver_deposit).is_ok(),
+                    "deposit transfer failed"
+                );
             }
 
             self.refunded = true;

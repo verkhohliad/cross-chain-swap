@@ -6,12 +6,17 @@
   "type": "commonjs",
   "scripts": {
     "example": "node evm_example.js",
-    "deploy:resolver": "node deployResolver.js"
+    "deploy:resolver": "node deployResolver.js",
+    "htlc": "ts-node htlc-tools.js"
   },
   "dependencies": {
     "dotenv": "^16.4.5",
     "ethers": "^6.13.4",
     "@1inch/cross-chain-sdk": "^0.1.0",
     "@1inch/fusion-sdk": "^1.0.0"
+  },
+  "devDependencies": {
+    "ts-node": "^10.9.2",
+    "typescript": "^5.5.4"
   }
 }
