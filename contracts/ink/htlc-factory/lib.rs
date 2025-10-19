@@ -157,7 +157,7 @@ pub mod htlc_factory {
         ) -> Address {
             let value: U256 = self.env().transferred_value();
             assert!(resolver_deposit > U256::from(0), "resolver_deposit required");
-            assert!(value == resolver_deposit, "attach native deposit only");
+            assert!(value >= resolver_deposit, "attach native deposit only");
             assert!(amount > U256::from(0), "zero amount");
 
             let escrow_addr = self.instantiate_psp22(
@@ -202,6 +202,34 @@ pub mod htlc_factory {
             });
 
             escrow_addr
+        }
+
+        /// Deposit PSP22 tokens into an already deployed escrow by pulling from the caller via transfer_from.
+        /// The caller must have approved this factory as spender on the PSP22 token for at least `amount`.
+        #[ink(message)]
+        pub fn deposit_psp22(
+            &mut self,
+            token: Address,
+            escrow: Address,
+            amount: U256,
+        ) {
+            let caller = self.env().caller();
+            // Perform PSP22 transfer_from(caller -> escrow)
+            match build_call::<DefaultEnvironment>()
+                .call(token)
+                .exec_input(
+                    ExecutionInput::new(Selector::new([0x54, 0xB3, 0xC7, 0x6F])) // transfer_from
+                        .push_arg(caller)
+                        .push_arg(escrow)
+                        .push_arg(amount)
+                        .push_arg(Vec::<u8>::new()),
+                )
+                .returns::<Result<(), ()>>()
+                .invoke()
+            {
+                Ok(()) => {}
+                _ => panic!("psp22 deposit transfer_from failed (check approval and balance)"),
+            }
         }
 
         /// Returns the last created escrow address.

@@ -1,0 +1,31 @@
+[package]
+name = "psp22_token"
+version = "0.1.0"
+edition = "2021"
+authors = ["Cross-Chain Swap Team"]
+repository = "https://github.com/verkhohliad/cross-chain-swap"
+
+[dependencies]
+ink = { git = "https://github.com/use-ink/ink", tag = "v6.0.0-alpha.4", default-features = false }
+scale = { package = "parity-scale-codec", version = "3", default-features = false, features = ["derive"] }
+scale-info = { version = "2", default-features = false, features = ["derive"] }
+
+[lib]
+path = "lib.rs"
+
+[features]
+default = ["std"]
+std = [
+  "ink/std",
+  "scale/std",
+  "scale-info/std",
+]
+ink-as-dependency = []
+
+[profile.dev]
+codegen-units = 1
+
+[profile.release]
+lto = false
+codegen-units = 1
+opt-level = "z"
