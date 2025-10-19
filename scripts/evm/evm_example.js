@@ -5,6 +5,7 @@ const F_SDK = require("@1inch/fusion-sdk");
 const { EscrowExtension } = require("@1inch/cross-chain-sdk");
 const { EvmCrossChainOrder } = require("@1inch/cross-chain-sdk");
 const { resolverAddress } = require("./constants");
+const { getBytes, keccak256 } = require('ethers');
 const bs_escrowFactory = require("./constants").base_sepolia.escrowFactory;
 const resolver_address = require("./constants").resolverAddress;
 const ERC20_TRUE = require("./constants").base_sepolia.ERC20_TRUE;
@@ -23,6 +24,11 @@ const coder = new ethers.AbiCoder();
 
 Error.stackTraceLimit = 50;
 
+function keccak256Hex(hexOrBytes) {
+  const bytes = typeof hexOrBytes === 'string' ? getBytes(hexOrBytes) : hexOrBytes;
+  return keccak256(bytes);
+}
+
 // for the sake of example, lets assume everyone is using stablecoins, so roughly 1:1 swaps
 
 // for the sake of example, our wallet will be the maker and the resolver
@@ -30,8 +36,11 @@ Error.stackTraceLimit = 50;
 // we've manually funded the resolver address with USDC so it passes the access token check
 
 // random 32 byte value
-const makerSecret = "0x" + Buffer.from(ethers.randomBytes(32)).toString("hex");
+const makerSecretBytes = Buffer.from(ethers.randomBytes(32));
+const hashSecret = keccak256Hex(makerSecretBytes);
+const makerSecret = "0x" + makerSecretBytes.toString("hex");
 console.log("Maker secret:", makerSecret);
+console.log('Hash of secret:', hashSecret);
 function newEvmOrder(escrowFactory, orderInfo, escrowParams, details, extra) {
   const SupportedEVMChains = SupportedChains.filter(
     (chainId) => chainId !== 501
