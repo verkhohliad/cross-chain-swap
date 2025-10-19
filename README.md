@@ -1,3 +1,4 @@
+![](./Banner.png)
 Overview
 
 1Inch Fusion+ Swap brings a seamless cross-chain swapping experience between Base Sepolia and the Polkadot Paseo Passet Hub. By combining 1Inch Fusion+ routing logic with cross-chain settlement, the project enables users to convert assets such as USDC on Base Sepolia directly into a Polkadot native coin or any PSP22 token on Paseo.
@@ -44,10 +45,10 @@ The following features could be implemented
 
 External Links
 
-    Home Page Link: https://example.com/1inch-fusion-plus-base-polkadot
+    Home Page Link: https://1inch.io/
 
-    Github Link: https://github.com/your-org/1inch-fusion-plus-base-polkadot
+    Github Link: https://github.com/1inch/cross-chain-swap
 
-    Documentation Link: https://docs.example.com/1inch-fusion-plus-crosschain
+    Documentation Link: https://1inch.io/assets/1inch-fusion-plus.pdf
 
 TLDR: This machine-generated description serves as a guideline for the project and should be used to fill in and refine implementation details, links, and any team or partnership information.
