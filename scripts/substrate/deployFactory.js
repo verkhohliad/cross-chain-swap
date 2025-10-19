@@ -4,7 +4,7 @@ import { ContractPromise } from "@polkadot/api-contract";
 
 // User-provided details (replace with actual values)
 const CONTRACT_ADDRESS = "0x4c063b4d405342c7bab244ef384213bec1e1d877"; // escrow contract
-const ESCROW_FACTORY_ADDRESS = "0xa2bdef91b96a031897848e75210eecb1f394bbff";
+const ESCROW_FACTORY_ADDRESS = "0x75e742d4c46cd85f3dc1866335394b53eada6867";
 
 const USER_SURI = "//Alice"; // Or your secret seed phrase
 
@@ -877,24 +877,24 @@ async function main() {
     const escrowData = {
       // Beneficiary address (20-byte H160 type expected by ink! Address/AccountId)
       // This is a common test address in Polkadot-like EVM chains.
-      beneficiary: "0x1234567890123456789012345678901234567890",
+      beneficiary: "0x6bd3cd4c04b9899c0fee3db05b4971256e153b70",
 
       // Hashed secret (32 bytes)
       hashedSecret:
-        "0xa1b2c3d4e5f60718293a4b5c6d7e8f90112233445566778899aabbccddeeff11",
+        "0x86c47f76ff4a6cb8ee9c172982eda47e895262b5a6a7582aaf7d97295ce1d8d4",
 
       // Expiry timestamp (Unix timestamp in milliseconds converted to seconds)
-      expiry: Math.floor(Date.now() / 1000) + 3600 * 24, // 24 hours from now
+      expiry: 1000, // 24 hours from now
 
       // Resolver deposit (as string with 12 decimals - assuming pAsset Hub native tokens have 12 decimals)
       resolverDeposit: "1000000000000",
 
       // Salt for deterministic address (optional, 32 bytes)
-      salt: "0xdeadbeefcafebabe123456789abcdef000112233445566778899aabbccddeeff",
+      salt: "",
 
       // Total value to transfer (locked_amount + resolver_deposit)
       // 5 tokens total (4 locked + 1 deposit)
-      transferValue: "5000000000000",
+      transferValue: "6000000000000",
     };
 
     console.log("--- 1. Querying for Gas Estimation (Dry Run) ---");
@@ -967,133 +967,29 @@ async function main() {
     }
   }
 }
+// TODO: Fix fail with error
+// Connected to chain: passet-hub
+// --- 1. Querying for Gas Estimation (Dry Run) ---
+// Gas Required: { refTime: '3,681,804,807', proofSize: '85,355' }
+// Storage Deposit: { Charge: '3,828,000,000' }
+// Simulated Escrow Creation successful.
+// New Escrow Address (Simulation): 0x55b74878e685450d68560545f39ce6c2f7b4090c
 
+// --- 2. Sending Transaction and Awaiting Finalization ---
+// 2025-10-19 02:03:49        REGISTRY: Unknown signed extensions EthSetOrigin, StorageWeightReclaim found, treating them as no-effect
+// 2025-10-19 02:03:49        API/INIT: RPC methods not decorated: chainHead_v1_body, chainHead_v1_call, chainHead_v1_continue, chainHead_v1_follow, chainHead_v1_header, chainHead_v1_stopOperation, chainHead_v1_storage, chainHead_v1_unfollow, chainHead_v1_unpin, chainSpec_v1_chainName, chainSpec_v1_genesisHash, chainSpec_v1_properties, transactionWatch_v1_submitAndWatch, transactionWatch_v1_unwatch, transaction_v1_broadcast, transaction_v1_stop
+// Current status is Ready
+// Current status is Broadcast
+// Current status is InBlock
+// Transaction included at blockHash 0xd8775837f6a486b6081e15a3417abf8e23f6cf2ee7665a32fb6b80540a4007d7
+// Transaction hash: 0xa3df78fa60302f13fccbae096a37686ea4474522b050ca07eaa112c0fc64911e
+// 2025-10-19 02:04:31          API-WS: disconnected from wss://testnet-passet-hub.polkadot.io: 1006:: Abnormal Closure
+// Current status is Finalized
+
+// ✅ Transaction Finalized!
+// Final BlockHash: 0xd8775837f6a486b6081e15a3417abf8e23f6cf2ee7665a32fb6b80540a4007d7
+// Final Transaction Hash: 0xa3df78fa60302f13fccbae096a37686ea4474522b050ca07eaa112c0fc64911e
+// Transaction failed with dispatch error: {"module":{"index":60,"error":"0x1a000000"}}
+
+// An error occurred during execution: Transaction failed: revive.ContractReverted
 main().catch(console.error);
-
-// async function main() {
-//   // Connect to the local Substrate node
-//   const wsProvider = new WsProvider("wss://testnet-passet-hub.polkadot.io");
-//   const api = await ApiPromise.create({ provider: wsProvider });
-
-//   const factory_contract = new ContractPromise(
-//     api,
-//     abi_factory,
-//     ESCROW_FACTORY_ADDRESS
-//   );
-//   // maximum gas to be consumed for the call. if limit is too small the call will fail.
-//   const gasLimit = api.registry.createType("WeightV2", {
-//     refTime: 1000000000,
-//     proofSize: 50000,
-//   }); // A more realistic initial gas limit  // a limit to how much Balance to be used to pay for the storage created by the contract call
-//   // if null is passed, unlimited balance can be used
-//   const storageDepositLimit = null;
-//   // balance to transfer to the contract account. use only with payable messages, will fail otherwise.
-//   // formerly know as "endowment"
-//   const value = api.registry.createType("Balance", 1000);
-
-//   // Create a keyring instance
-//   const keyring = new Keyring({ type: "sr25519" });
-
-//   // Add Alice to the keyring for testing
-//   const alice = keyring.addFromUri(
-//     "flight dust express talent mirror anchor style iron need labor spray kit"
-//   );
-
-//   // Random data for create_native_escrow call
-//   const escrowData = {
-//     // Beneficiary address (32-byte AccountId)
-//     beneficiary: "0x1234567890123456789012345678901234567890", // Example address
-
-//     // Hashed secret (32 bytes) - in practice, use keccak256(your_secret)
-//     hashedSecret:
-//       "0xa1b2c3d4e5f60718293a4b5c6d7e8f90112233445566778899aabbccddeeff11",
-
-//     // Expiry timestamp (Unix timestamp in seconds)
-//     expiry: Math.floor(Date.now() / 1000) + 86400, // 24 hours from now
-
-//     // Resolver deposit (as string to avoid precision loss)
-//     resolverDeposit: "1000000000000", // 1 token with 12 decimals
-
-//     // Salt for deterministic address (optional, 32 bytes)
-//     salt: "0xdeadbeefcafebabe123456789abcdef000112233445566778899aabbccddeeff",
-
-//     // Total value to transfer (locked_amount + resolver_deposit)
-//     // Must be > resolver_deposit
-//     transferValue: "5000000000000", // 5 tokens total (4 locked + 1 deposit)
-//   };
-//   const { gasRequired, storageDeposit, result, output } =
-//     await factory_contract.query.createNativeEscrow(
-//       alice.address,
-//       {
-//         gasLimit: api.registry.createType("WeightV2", {
-//           refTime: 3000000000000 * 6,
-//           proofSize: 131072 * 6,
-//         }),
-//         storageDepositLimit: null,
-//         value: escrowData.transferValue,
-//       },
-//       escrowData.beneficiary,
-//       escrowData.hashedSecret,
-//       escrowData.expiry,
-//       escrowData.resolverDeposit,
-//       escrowData.salt
-//     );
-
-//   console.log("Gas Required:", gasRequired.toHuman());
-//   console.log("Storage Deposit:", storageDeposit.toHuman());
-//   console.log("Result:", result.toHuman());
-//   console.log("Output: ", output.toHuman());
-
-//   if (result.isOk || (result.toHuman && result.toHuman().Ok)) {
-//     // Send the actual transaction
-//     const unsub = await factory_contract.tx
-//       .createNativeEscrow(
-//         {
-//           gasLimit: gasRequired,
-//           storageDepositLimit: null,
-//           value: escrowData.transferValue,
-//         },
-//         escrowData.beneficiary,
-//         escrowData.hashedSecret,
-//         escrowData.expiry,
-//         escrowData.resolverDeposit,
-//         escrowData.salt
-//       )
-//       .signAndSend(alice, (result) => {
-//         console.log(`Current status is ${result.status}`);
-
-//         if (result.status.isInBlock) {
-//           console.log(
-//             `Transaction included at blockHash ${result.status.asInBlock}`
-//           );
-//           console.log(`Transaction hash: ${result.txHash.toHex()}`);
-//           console.log(
-//             `Block explorer: https://blockscout-passet-hub.parity-testnet.parity.io//extrinsic/${result.txHash.toHex()}`
-//           );
-//         } else if (result.status.isFinalized) {
-//           console.log(
-//             `Transaction finalized at blockHash ${result.status.asFinalized}`
-//           );
-//           console.log(`Final transaction hash: ${result.txHash.toHex()}`);
-//           console.log(
-//             `Block explorer: https://blockscout-passet-hub.parity-testnet.parity.io/extrinsic/${result.txHash.toHex()}`
-//           );
-//           unsub();
-//         }
-
-//         if (result.dispatchError) {
-//           console.log(
-//             "Transaction failed with error:",
-//             result.dispatchError.toString()
-//           );
-//           unsub();
-//         }
-//       });
-//   } else {
-//     console.log("Result is not ok");
-//   }
-//   // Disconnect from the node
-//   await api.disconnect();
-// }
-
-// main().catch(console.error);
