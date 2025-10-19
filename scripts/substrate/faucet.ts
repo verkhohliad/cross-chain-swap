@@ -27,8 +27,8 @@ async function main() {
     if (dispatchError) {
       if (dispatchError.isModule) {
         const metaError = api.registry.findMetaError(dispatchError.asModule);
-        const { documentation, name, section } = metaError;
-        console.error(`[faucet] Dispatch Error: ${section}.${name}: ${documentation.join(" ")}`);
+        const { name, section } = metaError;
+        console.error(`[faucet] Dispatch Error: ${section}.${name}`);
       } else {
         console.error(`[faucet] Dispatch Error: ${dispatchError.toString()}`);
       }
